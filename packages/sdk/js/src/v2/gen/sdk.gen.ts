@@ -209,6 +209,8 @@ import type {
   SessionPromptResponses,
   SessionPullRequestErrors,
   SessionPullRequestResponses,
+  SessionReplyPullRequestErrors,
+  SessionReplyPullRequestResponses,
   SessionRevertErrors,
   SessionRevertResponses,
   SessionShareErrors,
@@ -3813,6 +3815,51 @@ export class Session2 extends HeyApiClient {
       ThrowOnError
     >({
       url: "/session/{sessionID}/pull-request",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Reply to a review thread
+   *
+   * Post a reply on an existing GitHub pull request review thread.
+   */
+  public replyPullRequest<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      threadID?: string
+      body?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "threadID" },
+            { in: "body", key: "body" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      SessionReplyPullRequestResponses,
+      SessionReplyPullRequestErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/pull-request/reply",
       ...options,
       ...params,
       headers: {

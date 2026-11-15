@@ -11,6 +11,7 @@ import {
 import { useI18n } from "@opencode-ai/ui/context/i18n"
 import { cloneSelectedLineRange, formatSelectedLineLabel } from "../../pierre/selection-bridge"
 import { LineCommentEditorV2, LineCommentV2 } from "@opencode-ai/ui/v2/line-comment-v2"
+import { ThreadReply, type SessionReviewThreadReply } from "../../components/session-review"
 import type { LineCommentEditorV2Mention } from "@opencode-ai/ui/v2/line-comment-v2"
 
 type ReviewThreadShape = LineCommentShape & {
@@ -33,6 +34,7 @@ type LineCommentControllerV2Props<T extends ReviewThreadShape> = {
   renderCommentActions?: (comment: T, controls: { edit: VoidFunction; remove: VoidFunction }) => JSX.Element
   editSubmitLabel?: string
   mention?: LineCommentEditorV2Mention
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
 }
 
 type CommentProps = {
@@ -146,6 +148,9 @@ export function createLineCommentControllerV2<T extends ReviewThreadShape>(props
                   </div>
                 )}
               </For>
+              <Show when={props.onThreadReply}>
+                <ThreadReply threadID={comment.id} onReply={props.onThreadReply} />
+              </Show>
             </div>
           ),
           selection: formatSelectedLineLabel(comment.selection, i18n.t),

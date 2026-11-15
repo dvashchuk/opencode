@@ -76,6 +76,12 @@ export const LinkInput = Schema.Struct({
 })
 export type LinkInput = Schema.Schema.Type<typeof LinkInput>
 
+export const ReplyInput = Schema.Struct({
+  threadID: Schema.String,
+  body: Schema.String,
+})
+export type ReplyInput = Schema.Schema.Type<typeof ReplyInput>
+
 export class AuthError extends Schema.TaggedErrorClass<AuthError>()("GitHubAuthError", {
   message: Schema.String,
 }) {}
@@ -97,6 +103,7 @@ export interface Interface {
   readonly link: (sessionID: SessionSchema.ID, input: LinkInput) => Effect.Effect<Link, AuthError | RequestError>
   readonly unlink: (sessionID: SessionSchema.ID) => Effect.Effect<void>
   readonly detect: () => Effect.Effect<{ repository: string; number: number } | undefined>
+  readonly reply: (input: ReplyInput) => Effect.Effect<ThreadComment, AuthError | RequestError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/GitHub") {}
@@ -222,6 +229,26 @@ type GqlResponse = {
   } | null
 }
 
+const replyMutation = `
+mutation($threadID: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadID, body: $body }) {
+    comment {
+      author {
+        login
+      }
+      body
+      createdAt
+      url
+    }
+  }
+}`
+
+type GqlReply = {
+  addPullRequestReviewThreadReply: {
+    comment: GqlComment | null
+  } | null
+}
+
 const PrList = Schema.fromJsonString(Schema.Array(Schema.Struct({ number: Schema.Finite })))
 
 const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer.effect(
@@ -294,6 +321,25 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
       },
       (effect) => effect,
     )
+
+    const sendReply = Effect.fnUntraced(function* (input: ReplyInput) {
+      const token = yield* readToken()
+      const response = yield* Effect.tryPromise({
+        try: () => graphql<GqlReply>(replyMutation, { ...input, headers: { authorization: `token ${token}` } }),
+        catch: (error) => {
+          const status = (error as { response?: { status?: number } }).response?.status
+          return new RequestError({ message: "GitHub reply failed", status })
+        },
+      })
+      const comment = response.addPullRequestReviewThreadReply?.comment
+      if (!comment?.author?.login) return yield* new RequestError({ message: "GitHub reply was not created" })
+      return {
+        author: comment.author.login,
+        body: comment.body,
+        created: comment.createdAt,
+        url: comment.url,
+      } satisfies ThreadComment
+    })
 
     const fetchLink = Effect.fnUntraced(function* (repository: string, number: number) {
       const split = splitRepository(repository)
@@ -482,6 +528,9 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
       }),
       detect: Effect.fn("GitHub.detect")(function* () {
         return yield* detect()
+      }),
+      reply: Effect.fn("GitHub.reply")(function* (input) {
+        return yield* sendReply(input)
       }),
     })
   }),

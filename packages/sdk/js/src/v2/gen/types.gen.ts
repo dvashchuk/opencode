@@ -9926,6 +9926,44 @@ export type SessionLinkPullRequestResponses = {
 
 export type SessionLinkPullRequestResponse = SessionLinkPullRequestResponses[keyof SessionLinkPullRequestResponses]
 
+export type SessionReplyPullRequestData = {
+  body?: {
+    threadID: string
+    body: string
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/pull-request/reply"
+}
+
+export type SessionReplyPullRequestErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type SessionReplyPullRequestError = SessionReplyPullRequestErrors[keyof SessionReplyPullRequestErrors]
+
+export type SessionReplyPullRequestResponses = {
+  /**
+   * Created reply
+   */
+  200: {
+    author: string
+    body: string
+    created: string
+    url: string
+  }
+}
+
+export type SessionReplyPullRequestResponse = SessionReplyPullRequestResponses[keyof SessionReplyPullRequestResponses]
+
 export type SessionMessagesData = {
   body?: never
   path: {

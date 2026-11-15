@@ -87,6 +87,7 @@ export const SessionPaths = {
   children: `${root}/:sessionID/children`,
   todo: `${root}/:sessionID/todo`,
   pullRequest: `${root}/:sessionID/pull-request`,
+  replyPullRequest: `${root}/:sessionID/pull-request/reply`,
   diff: `${root}/:sessionID/diff`,
   messages: `${root}/:sessionID/message`,
   message: `${root}/:sessionID/message/:messageID`,
@@ -206,6 +207,19 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.linkPullRequest",
             summary: "Link a pull request",
             description: "Link a GitHub pull request to the session and return its metadata and review threads.",
+          }),
+        ),
+        HttpApiEndpoint.post("replyPullRequest", SessionPaths.replyPullRequest, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          payload: GitHub.ReplyInput,
+          success: described(GitHub.ThreadComment, "Created reply"),
+          error: [HttpApiError.BadRequest],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.replyPullRequest",
+            summary: "Reply to a review thread",
+            description: "Post a reply on an existing GitHub pull request review thread.",
           }),
         ),
         HttpApiEndpoint.delete("unlinkPullRequest", SessionPaths.pullRequest, {

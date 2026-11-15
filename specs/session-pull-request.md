@@ -397,3 +397,13 @@ edit or delete affordances. The review panel also keeps the flat thread list.
 Unverified without a running server:
 
 - First real call to GitHub, and the migration applying to an existing database.
+
+## Reply to a thread
+
+`POST /session/:sessionID/pull-request/reply` takes `{ threadID, body }` and
+runs the GraphQL `addPullRequestReviewThreadReply` mutation with the same `gh`
+token. It returns the created comment. Every read-only thread annotation in both
+review views carries a reply box; submitting posts the reply and then refetches
+the pull request with `refresh=true` so the new comment appears without waiting
+out the 30s cache. v1 allowed only reads; this is the single write path and it
+writes nothing but a thread reply.
