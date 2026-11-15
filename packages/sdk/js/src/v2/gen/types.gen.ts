@@ -8202,7 +8202,8 @@ export type VcsDiffData = {
   query: {
     directory?: string
     workspace?: string
-    mode: "git" | "branch"
+    mode: "git" | "branch" | "pull_request"
+    sessionID?: string
     context?: number
   }
   url: "/vcs/diff"
@@ -9754,6 +9755,176 @@ export type SessionDiffResponses = {
 }
 
 export type SessionDiffResponse = SessionDiffResponses[keyof SessionDiffResponses]
+
+export type SessionUnlinkPullRequestData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/pull-request"
+}
+
+export type SessionUnlinkPullRequestErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionUnlinkPullRequestError = SessionUnlinkPullRequestErrors[keyof SessionUnlinkPullRequestErrors]
+
+export type SessionUnlinkPullRequestResponses = {
+  /**
+   * Successfully unlinked pull request
+   */
+  200: boolean
+}
+
+export type SessionUnlinkPullRequestResponse =
+  SessionUnlinkPullRequestResponses[keyof SessionUnlinkPullRequestResponses]
+
+export type SessionPullRequestData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+    refresh?: "true" | "false"
+  }
+  url: "/session/{sessionID}/pull-request"
+}
+
+export type SessionPullRequestErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type SessionPullRequestError = SessionPullRequestErrors[keyof SessionPullRequestErrors]
+
+export type SessionPullRequestResponses = {
+  /**
+   * Linked pull request
+   */
+  200: {
+    pullRequest: {
+      repository: string
+      number: number
+      url: string
+      title: string
+      state: "open" | "closed" | "merged"
+      draft: boolean
+      base_ref: string
+      base_sha: string
+      head_ref: string
+      head_sha: string
+      additions: number
+      deletions: number
+      changed_files: number
+      checks: "success" | "failure" | "pending" | "expected" | "error" | "unknown"
+      updated: string
+    }
+    threads: Array<{
+      id: string
+      path?: string
+      line?: number
+      original_line?: number
+      outdated: boolean
+      resolved: boolean
+      comments: Array<{
+        author: string
+        body: string
+        created: string
+        url: string
+      }>
+    }>
+    truncated: boolean
+  }
+}
+
+export type SessionPullRequestResponse = SessionPullRequestResponses[keyof SessionPullRequestResponses]
+
+export type SessionLinkPullRequestData = {
+  body?: {
+    repository?: string
+    number: number
+    refresh?: boolean
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/pull-request"
+}
+
+export type SessionLinkPullRequestErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionLinkPullRequestError = SessionLinkPullRequestErrors[keyof SessionLinkPullRequestErrors]
+
+export type SessionLinkPullRequestResponses = {
+  /**
+   * Linked pull request
+   */
+  200: {
+    pullRequest: {
+      repository: string
+      number: number
+      url: string
+      title: string
+      state: "open" | "closed" | "merged"
+      draft: boolean
+      base_ref: string
+      base_sha: string
+      head_ref: string
+      head_sha: string
+      additions: number
+      deletions: number
+      changed_files: number
+      checks: "success" | "failure" | "pending" | "expected" | "error" | "unknown"
+      updated: string
+    }
+    threads: Array<{
+      id: string
+      path?: string
+      line?: number
+      original_line?: number
+      outdated: boolean
+      resolved: boolean
+      comments: Array<{
+        author: string
+        body: string
+        created: string
+        url: string
+      }>
+    }>
+    truncated: boolean
+  }
+}
+
+export type SessionLinkPullRequestResponse = SessionLinkPullRequestResponses[keyof SessionLinkPullRequestResponses]
 
 export type SessionMessagesData = {
   body?: never

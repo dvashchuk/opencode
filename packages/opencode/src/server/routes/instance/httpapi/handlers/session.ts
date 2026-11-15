@@ -5,6 +5,7 @@ import { EventV2Bridge } from "@/event-v2-bridge"
 import { Command } from "@/command"
 import { Permission } from "@/permission"
 import { SessionShare } from "@/share/session"
+import { GitHub } from "@/github/github"
 import { Session } from "@/session/session"
 import { SessionCompaction } from "@/session/compaction"
 import { MessageV2 } from "@/session/message-v2"
@@ -48,6 +49,7 @@ const tryParseJson = (text: string) =>
 export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", (handlers) =>
   Effect.gen(function* () {
     const session = yield* Session.Service
+    const github = yield* GitHub.Service
     const shareSvc = yield* SessionShare.Service
     const promptSvc = yield* SessionPrompt.Service
     const revertSvc = yield* SessionRevert.Service
@@ -410,8 +412,33 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return yield* session.updatePart(payload)
     })
 
+    const pullRequest = Effect.fn("InstanceHttpApi.pullRequest")(function* (ctx: {
+      params: { sessionID: SessionID }
+      query: { refresh?: boolean }
+    }) {
+      const link = yield* github.get(ctx.params.sessionID, { refresh: ctx.query.refresh }).pipe(Effect.orDie)
+      return link ?? null
+    })
+
+    const linkPullRequest = Effect.fn("InstanceHttpApi.linkPullRequest")(function* (ctx: {
+      params: { sessionID: SessionID }
+      payload: GitHub.LinkInput
+    }) {
+      return yield* github.link(ctx.params.sessionID, ctx.payload).pipe(Effect.orDie)
+    })
+
+    const unlinkPullRequest = Effect.fn("InstanceHttpApi.unlinkPullRequest")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      yield* github.unlink(ctx.params.sessionID).pipe(Effect.orDie)
+      return true
+    })
+
     return handlers
       .handle("list", list)
+      .handle("pullRequest", pullRequest)
+      .handle("linkPullRequest", linkPullRequest)
+      .handle("unlinkPullRequest", unlinkPullRequest)
       .handle("status", status)
       .handle("get", get)
       .handle("children", children)

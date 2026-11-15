@@ -108,8 +108,8 @@ type FollowupItem = FollowupDraft & { id: string }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
 const emptyFollowups: FollowupItem[] = []
 
-type ChangeMode = "git" | "branch" | "turn"
-type VcsMode = "git" | "branch"
+type ChangeMode = "git" | "branch" | "turn" | "pull_request"
+type VcsMode = "git" | "branch" | "pull_request"
 
 const sessionViewState = () => ({
   messageId: undefined as string | undefined,
@@ -654,6 +654,22 @@ export default function Page() {
     const project = sync().project
     return !!project && project.vcs !== "git"
   })
+  const pullRequestQuery = createQuery(() => {
+    const sessionID = params.id
+    return {
+      queryKey: ["session-pull-request", sessionID ?? "", sdk().directory] as const,
+      enabled: !!sessionID && sync().project?.vcs === "git",
+      queryFn: () =>
+        sdk()
+          .client.session.pullRequest({ sessionID: sessionID!, directory: sdk().directory })
+          .then((result) => result.data)
+          .catch((error) => {
+            console.debug("[session-review] failed to load pull request", { error })
+            return null
+          }),
+    }
+  })
+
   const changesOptions = createMemo<ChangeMode[]>(() => {
     const list: ChangeMode[] = []
     const project = sync().project
@@ -662,6 +678,7 @@ export default function Page() {
     if (project?.vcs === "git" && vcs?.branch && vcs?.default_branch && vcs.branch !== vcs.default_branch) {
       list.push("branch")
     }
+    if (project?.vcs === "git" && pullRequestQuery.data) list.push("pull_request")
     list.push("turn")
     return list
   })
@@ -674,12 +691,37 @@ export default function Page() {
   )
   const vcsMode = createMemo<VcsMode | undefined>(() => {
     const mode = reviewMode()
-    if (mode === "git" || mode === "branch") return mode
+    if (mode === "git" || mode === "branch" || mode === "pull_request") return mode
   })
   const vcsKey = createMemo(
     () =>
-      ["session-vcs", sdk().directory, sync().data.vcs?.branch ?? "", sync().data.vcs?.default_branch ?? ""] as const,
+      [
+        "session-vcs",
+        sdk().directory,
+        sync().data.vcs?.branch ?? "",
+        sync().data.vcs?.default_branch ?? "",
+        pullRequestQuery.data?.pullRequest.head_sha ?? "",
+      ] as const,
   )
+  const vcsDiff = (input: { directory: string; context?: number }) => {
+    const mode = vcsMode()
+    if (!mode) return Promise.resolve([])
+    if (mode === "pull_request") {
+      const sessionID = params.id
+      if (!sessionID) return Promise.resolve([])
+      return sdk()
+        .client.vcs.diff({ mode, sessionID, directory: input.directory, context: input.context })
+        .then((result) => result.data ?? [])
+    }
+    return sdk()
+      .api.vcs.diff({
+        location: { directory: input.directory },
+        mode: mode === "git" ? "working" : mode,
+        context: input.context,
+      })
+      .then((result) => result.data)
+  }
+
   const vcsQuery = createQuery(() => {
     const mode = vcsMode()
     const enabled = wantsReview() && sync().project?.vcs === "git"
@@ -689,19 +731,16 @@ export default function Page() {
       enabled,
       queryFn: mode
         ? () =>
-            sdk()
-              .api.vcs.diff({ location: { directory: sdk().directory }, mode: mode === "git" ? "working" : mode })
-              .then((result) => result.data)
-              .catch((error) => {
-                console.debug("[session-review] failed to load vcs diff", { mode, error })
-                return []
-              })
+            vcsDiff({ directory: sdk().directory }).catch((error) => {
+              console.debug("[session-review] failed to load vcs diff", { mode, error })
+              return []
+            })
         : skipToken,
     }
   })
   const refreshVcs = debounce(() => void queryClient.invalidateQueries({ queryKey: vcsKey() }), 100)
   const reviewDiffs = () => {
-    if (reviewMode() === "git" || reviewMode() === "branch")
+    if (reviewMode() !== "turn")
       // avoids suspense
       return vcsQuery.isFetched ? (vcsQuery.data ?? []) : []
     return turnDiffs()
@@ -715,7 +754,7 @@ export default function Page() {
   const reviewCount = () => reviewDiffs().length
   const hasReview = () => reviewCount() > 0
   const reviewReady = () => {
-    if (reviewMode() === "git" || reviewMode() === "branch") return !vcsQuery.isPending
+    if (reviewMode() !== "turn") return !vcsQuery.isPending
     return true
   }
   const loadReviewDiff = async (file: string, version?: number): Promise<VcsFileDiff | undefined> => {
@@ -736,14 +775,7 @@ export default function Page() {
           queryKey: [serverSDK().scope, ...vcsKey(), mode, "directory", scope, context, version] as const,
           staleTime: Number.POSITIVE_INFINITY,
           retry: 2,
-          queryFn: () =>
-            sdk()
-              .api.vcs.diff({
-                location: { directory: scope },
-                mode: mode === "git" ? "working" : mode,
-                context,
-              })
-              .then((result) => result.data),
+          queryFn: () => vcsDiff({ directory: scope, context }),
         })
         .then((diffs) => diffs.find((diff) => diff.file === file))
 
@@ -1164,6 +1196,10 @@ export default function Page() {
   const changesLabel = (option: ChangeMode) => {
     if (option === "git") return language.t("ui.sessionReview.title.git")
     if (option === "branch") return language.t("ui.sessionReview.title.branch")
+    if (option === "pull_request") {
+      const pr = pullRequestQuery.data?.pullRequest
+      return pr ? `#${pr.number}` : language.t("ui.sessionReview.title.pullRequest")
+    }
     return language.t("ui.sessionReview.title.lastTurn")
   }
 
@@ -1228,11 +1264,12 @@ export default function Page() {
   const reviewEmptyText = createMemo(() => {
     if (reviewMode() === "git") return language.t("session.review.noUncommittedChanges")
     if (reviewMode() === "branch") return language.t("session.review.noBranchChanges")
+    if (reviewMode() === "pull_request") return language.t("session.review.noPullRequestChanges")
     return language.t("session.review.noChanges")
   })
 
   const reviewEmpty = (input: { loadingClass: string; emptyClass: string }) => {
-    if (reviewMode() === "git" || reviewMode() === "branch") {
+    if (reviewMode() === "git" || reviewMode() === "branch" || reviewMode() === "pull_request") {
       if (!reviewReady()) return <div class={input.loadingClass}>{language.t("session.review.loadingChanges")}</div>
       return empty(reviewEmptyText())
     }
@@ -1250,13 +1287,55 @@ export default function Page() {
   }
 
   const reviewEmptyV2 = () => {
-    if ((reviewMode() === "git" || reviewMode() === "branch") && !reviewReady()) {
+    if (
+      (reviewMode() === "git" || reviewMode() === "branch" || reviewMode() === "pull_request") &&
+      !reviewReady()
+    ) {
       return <div class="px-6 py-4 text-text-weak">{language.t("session.review.loadingChanges")}</div>
     }
     if (reviewMode() === "turn" && nogit()) {
       return <SessionReviewEmptyNoGitV2 pending={gitMutation.isPending} onInitGit={initGit} />
     }
     return <SessionReviewEmptyChangesV2 />
+  }
+
+  const pullRequestBanner = () => {
+    const link = pullRequestQuery.data
+    if (!link || reviewMode() !== "pull_request") return
+    return {
+      number: link.pullRequest.number,
+      title: link.pullRequest.title,
+      url: link.pullRequest.url,
+      state: link.pullRequest.state,
+      checks: link.pullRequest.checks,
+    }
+  }
+
+  const pullRequestThreads = () => {
+    const link = pullRequestQuery.data
+    if (!link || reviewMode() !== "pull_request") return []
+    return link.threads.flatMap((thread) => {
+      const path = thread.path
+      if (!path) return []
+      const first = thread.comments[0]
+      if (!first) return []
+      return [
+        {
+          id: thread.id,
+          file: path,
+          line: thread.line ?? thread.original_line,
+          author: first.author,
+          body: first.body,
+          url: first.url,
+          outdated: thread.outdated,
+          resolved: thread.resolved,
+          replies: thread.comments.slice(1).map((comment) => ({
+            author: comment.author,
+            body: comment.body,
+          })),
+        },
+      ]
+    })
   }
 
   const reviewContent = (input: {
@@ -1288,6 +1367,8 @@ export default function Page() {
         onFocusedCommentChange={comments.setFocus}
         onViewFile={openReviewFile}
         classes={input.classes}
+        pullRequest={pullRequestBanner()}
+        threads={pullRequestThreads()}
       />
     </Show>
   )
@@ -1308,6 +1389,12 @@ export default function Page() {
     diffsReady: reviewReady,
     get diffVersion() {
       return vcsQuery.dataUpdatedAt
+    },
+    get pullRequest() {
+      return pullRequestBanner()
+    },
+    get threads() {
+      return pullRequestThreads()
     },
     loadDiff: loadReviewDiff,
     get activeFile() {

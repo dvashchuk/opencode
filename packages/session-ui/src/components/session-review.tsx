@@ -36,6 +36,22 @@ export type SessionReviewComment = {
   file: string
   selection: SelectedLineRange
   comment: string
+  author?: string
+  replies?: { author: string; body: string }[]
+  readOnly?: boolean
+  resolved?: boolean
+  outdated?: boolean
+}
+
+export type SessionReviewThread = {
+  id: string
+  file: string
+  line?: number
+  author: string
+  body: string
+  replies: { author: string; body: string }[]
+  resolved?: boolean
+  outdated?: boolean
 }
 
 export type SessionReviewLineComment = {
@@ -103,6 +119,7 @@ export interface SessionReviewProps {
   onLineCommentDelete?: (comment: SessionReviewCommentDelete) => void
   lineCommentActions?: SessionReviewCommentActions
   comments?: SessionReviewComment[]
+  threads?: SessionReviewThread[]
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
   focusedFile?: string
@@ -189,13 +206,28 @@ export const SessionReview = (props: SessionReviewProps) => {
   const files = createMemo(() => props.diffs.map((diff) => diff.file!))
   const grouped = createMemo(() => {
     const next = new Map<string, SessionReviewComment[]>()
-    for (const comment of props.comments ?? []) {
+    const add = (comment: SessionReviewComment) => {
       const list = next.get(comment.file)
       if (list) {
         list.push(comment)
-        continue
+        return
       }
       next.set(comment.file, [comment])
+    }
+    for (const comment of props.comments ?? []) add(comment)
+    for (const thread of props.threads ?? []) {
+      if (!thread.line) continue
+      add({
+        id: thread.id,
+        file: thread.file,
+        selection: { start: thread.line, end: thread.line, side: "additions" },
+        comment: thread.body,
+        author: thread.author,
+        replies: thread.replies,
+        readOnly: true,
+        resolved: thread.resolved,
+        outdated: thread.outdated,
+      })
     }
     return next
   })

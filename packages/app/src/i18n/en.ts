@@ -688,6 +688,10 @@ export const dict = {
   "session.review.noChanges": "No changes",
   "session.review.noUncommittedChanges": "No uncommitted changes yet",
   "session.review.noBranchChanges": "No branch changes yet",
+  "session.review.noPullRequestChanges": "No pull request changes yet",
+  "session.review.pr.comments": "Pull request comments",
+  "session.review.pr.outdated": "Outdated",
+  "session.review.pr.resolved": "Resolved",
 
   "session.files.selectToOpen": "Select a file to open",
   "session.files.all": "All files",

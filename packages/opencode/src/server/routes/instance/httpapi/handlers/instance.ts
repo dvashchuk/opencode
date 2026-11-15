@@ -5,6 +5,7 @@ import { Format } from "@/format"
 import { Global } from "@opencode-ai/core/global"
 import { LSP } from "@/lsp/lsp"
 import { Vcs } from "@/project/vcs"
+import type { SessionID } from "@/session/schema"
 import { Skill } from "@/skill"
 import { Effect } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
@@ -49,9 +50,9 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
     })
 
     const getVcsDiff = Effect.fn("InstanceHttpApi.vcsDiff")(function* (ctx: {
-      query: { mode: Vcs.Mode; context?: number }
+      query: { mode: Vcs.Mode; context?: number; sessionID?: SessionID }
     }) {
-      return yield* vcs.diff(ctx.query.mode, { context: ctx.query.context })
+      return yield* vcs.diff(ctx.query.mode, { context: ctx.query.context, sessionID: ctx.query.sessionID })
     })
 
     const getVcsDiffRaw = Effect.fn("InstanceHttpApi.vcsDiffRaw")(function* () {
