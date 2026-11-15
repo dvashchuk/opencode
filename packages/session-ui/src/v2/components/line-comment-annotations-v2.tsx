@@ -1,5 +1,6 @@
 import { type SelectedLineRange } from "@pierre/diffs"
 import { For, Show, type Accessor, type JSX } from "solid-js"
+import { Icon } from "@opencode-ai/ui/icon"
 import {
   createLineCommentAnnotations,
   createLineCommentGutterRenderer,
@@ -29,6 +30,7 @@ type LineCommentControllerV2Props<T extends ReviewThreadShape> = {
   state: LineCommentStateProps<string>
   getSide: (range: SelectedLineRange) => "additions" | "deletions"
   onSubmit: (input: { comment: string; selection: SelectedLineRange }) => void
+  onGitHubSubmit?: (input: { comment: string; selection: SelectedLineRange }) => void
   onUpdate?: (input: { id: string; comment: string; selection: SelectedLineRange }) => void
   onDelete?: (comment: T) => void
   renderCommentActions?: (comment: T, controls: { edit: VoidFunction; remove: VoidFunction }) => JSX.Element
@@ -131,6 +133,7 @@ export function createLineCommentControllerV2<T extends ReviewThreadShape>(props
           comment: (
             <div class="flex flex-col gap-1">
               <div class="flex items-center gap-2">
+                <Icon name="github" size="small" />
                 <span class="text-12-medium text-text-strong">{comment.author}</span>
                 <Show when={comment.outdated}>
                   <span class="text-11-regular text-text-weak">{i18n.t("ui.sessionReview.pr.outdated")}</span>

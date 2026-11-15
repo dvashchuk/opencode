@@ -407,3 +407,16 @@ review views carries a reply box; submitting posts the reply and then refetches
 the pull request with `refresh=true` so the new comment appears without waiting
 out the 30s cache. v1 allowed only reads; this is the single write path and it
 writes nothing but a thread reply.
+
+## Comment on a diff line
+
+`POST /session/:sessionID/pull-request/comment` takes `{ path, line, body }` and
+runs the GraphQL `addPullRequestReviewThread` mutation against the linked pull
+request, creating a new review thread on that line. The reply path handles
+existing threads; this handles new ones.
+
+The line editor now offers two submits, each with its own icon: the comment icon
+posts a local session comment, the GitHub icon posts the same text to the pull
+request. GitHub-authored threads are marked with the GitHub icon and the author
+login, never with edit or delete affordances, so a local draft and a real review
+comment are distinguishable at a glance.

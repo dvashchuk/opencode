@@ -186,6 +186,8 @@ export type LineCommentEditorProps = Omit<LineCommentAnchorProps, "children" | "
   autofocus?: boolean
   cancelLabel?: string
   submitLabel?: string
+  onGitHubSubmit?: VoidFunction
+  githubLabel?: string
   mention?: {
     items: (query: string) => string[] | Promise<string[]>
   }
@@ -204,6 +206,8 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
     "autofocus",
     "cancelLabel",
     "submitLabel",
+    "onGitHubSubmit",
+    "githubLabel",
     "mention",
   ])
 
@@ -412,6 +416,20 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
                 >
                   {split.cancelLabel ?? i18n.t("ui.common.cancel")}
                 </button>
+                <Show when={split.onGitHubSubmit}>
+                  <button
+                    type="button"
+                    data-slot="line-comment-action"
+                    data-variant="ghost"
+                    title={split.githubLabel}
+                    aria-label={split.githubLabel}
+                    disabled={split.value.trim().length === 0}
+                    on:mousedown={hold as any}
+                    on:click={click(() => split.onGitHubSubmit?.()) as any}
+                  >
+                    <Icon name="github" size="small" />
+                  </button>
+                </Show>
                 <button
                   type="button"
                   data-slot="line-comment-action"
@@ -420,6 +438,7 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
                   on:mousedown={hold as any}
                   on:click={click(submit) as any}
                 >
+                  <Icon name="comment" size="small" />
                   {split.submitLabel ?? i18n.t("ui.lineComment.submit")}
                 </button>
               </>
@@ -428,7 +447,20 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
             <Button size="small" variant="ghost" onClick={split.onCancel}>
               {split.cancelLabel ?? i18n.t("ui.common.cancel")}
             </Button>
+            <Show when={split.onGitHubSubmit}>
+              <Button
+                size="small"
+                variant="ghost"
+                title={split.githubLabel}
+                aria-label={split.githubLabel}
+                disabled={split.value.trim().length === 0}
+                onClick={() => split.onGitHubSubmit?.()}
+              >
+                <Icon name="github" size="small" />
+              </Button>
+            </Show>
             <Button size="small" variant="primary" disabled={split.value.trim().length === 0} onClick={submit}>
+              <Icon name="comment" size="small" />
               {split.submitLabel ?? i18n.t("ui.lineComment.submit")}
             </Button>
           </Show>
