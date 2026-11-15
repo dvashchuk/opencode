@@ -65,6 +65,25 @@ export const SessionTable = sqliteTable(
   ],
 )
 
+export const SessionPullRequestTable = sqliteTable(
+  "session_pull_request",
+  {
+    session_id: text()
+      .$type<SessionSchema.ID>()
+      .notNull()
+      .primaryKey()
+      .references(() => SessionTable.id, { onDelete: "cascade" }),
+    repository: text().notNull(),
+    number: integer().notNull(),
+    base_ref: text().notNull(),
+    head_ref: text().notNull(),
+    base_sha: text().notNull(),
+    head_sha: text().notNull(),
+    ...Timestamps,
+  },
+  (table) => [index("session_pull_request_repository_number_idx").on(table.repository, table.number)],
+)
+
 export const MessageTable = sqliteTable(
   "message",
   {

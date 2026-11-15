@@ -20,6 +20,7 @@ import type {
   SessionReviewDiffStyle,
   SessionReviewFocus,
   SessionReviewLineComment,
+  SessionReviewThread,
 } from "../../components/session-review"
 import type { SessionReviewExpandMode } from "./session-review-v2"
 import { createLineCommentControllerV2 } from "./line-comment-annotations-v2"
@@ -41,6 +42,7 @@ export type SessionReviewFilePreviewV2Props = {
   onLineCommentDelete?: (comment: SessionReviewCommentDelete) => void
   lineCommentActions?: SessionReviewCommentActions
   comments?: SessionReviewComment[]
+  threads?: SessionReviewThread[]
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
 }
@@ -113,7 +115,24 @@ export function SessionReviewFilePreviewV2(props: SessionReviewFilePreviewV2Prop
   }))
   const diffCanRender = createMemo(() => view().additions !== 0 || view().deletions !== 0)
   const mediaKind = createMemo(() => mediaKindFromPath(props.file))
-  const comments = createMemo(() => (props.comments ?? []).filter((comment) => comment.file === props.file))
+  const comments = createMemo(() => {
+    const list = (props.comments ?? []).filter((comment) => comment.file === props.file)
+    for (const thread of props.threads ?? []) {
+      if (thread.file !== props.file || !thread.line) continue
+      list.push({
+        id: thread.id,
+        file: thread.file,
+        selection: { start: thread.line, end: thread.line, side: "additions" },
+        comment: thread.body,
+        author: thread.author,
+        replies: thread.replies,
+        readOnly: true,
+        resolved: thread.resolved,
+        outdated: thread.outdated,
+      })
+    }
+    return list
+  })
   const commentedLines = createMemo(() => comments().map((comment) => comment.selection))
   const lineCommentsEnabled = () => props.onLineComment != null
 

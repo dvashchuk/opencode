@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, type JSX } from "solid-js"
+import { createEffect, For, onCleanup, Show, type JSX } from "solid-js"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import type { SnapshotFileDiff, VcsFileDiff } from "@opencode-ai/sdk/v2"
 import type { FileDiffInfo } from "@opencode-ai/client/promise"
@@ -11,9 +11,30 @@ import type {
 import type { SelectedLineRange } from "@/context/file"
 import { useSDK } from "@/context/sdk"
 import { useLayout } from "@/context/layout"
+import { useLanguage } from "@/context/language"
 import type { LineComment } from "@/context/comments"
 
 export type DiffStyle = "unified" | "split"
+
+export type SessionReviewPullRequest = {
+  number: number
+  title: string
+  url: string
+  state: string
+  checks: string
+}
+
+export type SessionReviewThread = {
+  id: string
+  file: string
+  line?: number
+  author: string
+  body: string
+  url: string
+  outdated: boolean
+  resolved: boolean
+  replies: { author: string; body: string }[]
+}
 
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 
@@ -42,6 +63,8 @@ export interface SessionReviewTabProps {
     header?: string
     container?: string
   }
+  pullRequest?: SessionReviewPullRequest
+  threads?: SessionReviewThread[]
 }
 
 export function SessionReviewTab(props: SessionReviewTabProps) {
@@ -52,6 +75,7 @@ export function SessionReviewTab(props: SessionReviewTabProps) {
 
   const sdk = useSDK()
   const layout = useLayout()
+  const language = useLanguage()
 
   const readFile = async (path: string) => {
     return sdk()
@@ -130,8 +154,48 @@ export function SessionReviewTab(props: SessionReviewTabProps) {
     props.onScrollRef?.(undefined)
   })
 
+  const threads = () => props.threads ?? []
+
   return (
-    <SessionReview
+    <div class="flex flex-col h-full min-h-0">
+      <Show when={props.pullRequest}>
+        {(pr) => (
+          <div class="flex items-center gap-2 border-b border-border-weaker-base px-3 py-2">
+            <span class="text-12-medium text-text-strong">#{pr().number}</span>
+            <span class="min-w-0 flex-1 truncate text-12-regular text-text-weak">{pr().title}</span>
+            <span class="text-12-regular text-text-weak">{pr().state}</span>
+          </div>
+        )}
+      </Show>
+      <Show when={threads().length > 0}>
+        <div class="flex max-h-40 flex-col gap-2 overflow-auto border-b border-border-weaker-base px-3 py-2">
+          <span class="text-12-medium text-text-weak">{language.t("session.review.pr.comments")}</span>
+          <For each={threads()}>
+            {(thread) => (
+              <button
+                type="button"
+                class="flex flex-col gap-1 text-left"
+                onClick={() => props.onViewFile?.(thread.file)}
+              >
+                <span class="text-12-regular text-text-weak">
+                  {thread.file}
+                  {thread.line ? `:${thread.line}` : ""} · {thread.author}
+                </span>
+                <span class="whitespace-pre-wrap break-words text-12-regular text-text-base">{thread.body}</span>
+                <Show when={thread.resolved || thread.outdated}>
+                  <span class="text-12-regular text-text-weak">
+                    {thread.resolved
+                      ? language.t("session.review.pr.resolved")
+                      : language.t("session.review.pr.outdated")}
+                  </span>
+                </Show>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
+      <div class="min-h-0 flex-1">
+        <SessionReview
       title={props.title}
       empty={props.empty}
       scrollRef={(el) => {
@@ -166,7 +230,9 @@ export function SessionReviewTab(props: SessionReviewTabProps) {
       lineCommentMention={props.commentMentions}
       comments={props.comments}
       focusedComment={props.focusedComment}
-      onFocusedCommentChange={props.onFocusedCommentChange}
-    />
+        onFocusedCommentChange={props.onFocusedCommentChange}
+      />
+      </div>
+    </div>
   )
 }

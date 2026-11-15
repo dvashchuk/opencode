@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, Show, type JSX } from "solid-js"
+import { createMemo, createResource, createSignal, For, Show, type JSX } from "solid-js"
 import type { SnapshotFileDiff, VcsFileDiff } from "@opencode-ai/sdk/v2"
 import type { FileDiffInfo } from "@opencode-ai/client/promise"
 import {
@@ -31,6 +31,8 @@ import {
 import type { ReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { applyFileListKeyDown, SessionFileListV2 } from "@/pages/session/v2/session-file-list-v2"
 
+import type { SessionReviewPullRequest, SessionReviewThread } from "@/pages/session/review-tab"
+
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 
 export type ReviewPanelV2Props = {
@@ -52,6 +54,8 @@ export type ReviewPanelV2Props = {
   comments?: SessionReviewComment[]
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
+  pullRequest?: SessionReviewPullRequest
+  threads?: SessionReviewThread[]
 }
 
 export function ReviewPanelV2(props: ReviewPanelV2Props) {
@@ -128,6 +132,8 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
           searching={searching}
           kinds={treeKinds}
           activeDiff={activeDiff}
+          pullRequest={props.pullRequest}
+          threads={props.threads}
         />
       }
       activeFile={activeDiff()}
@@ -155,6 +161,7 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
                   onLineCommentUpdate={props.onLineCommentUpdate}
                   onLineCommentDelete={props.onLineCommentDelete}
                   lineCommentActions={props.lineCommentActions}
+                  threads={props.threads}
                   comments={props.comments}
                   focusedComment={props.focusedComment}
                   onFocusedCommentChange={props.onFocusedCommentChange}
@@ -178,6 +185,8 @@ function ReviewPanelV2Sidebar(props: {
   searching: () => boolean
   kinds: () => ReturnType<typeof reviewDiffKinds>
   activeDiff: () => string | undefined
+  pullRequest?: SessionReviewPullRequest
+  threads?: SessionReviewThread[]
 }) {
   const language = useLanguage()
   const [explicitHighlight, setExplicitHighlight] = createSignal<string | undefined>()
@@ -212,6 +221,42 @@ function ReviewPanelV2Sidebar(props: {
       minWidth={SESSION_REVIEW_V2_SIDEBAR_WIDTH_MIN}
       maxWidth={SESSION_REVIEW_V2_SIDEBAR_WIDTH_MAX}
     >
+      <Show when={props.pullRequest}>
+        {(pr) => (
+          <div class="flex items-center gap-2 border-b border-border-weaker-base px-2 py-2">
+            <span class="text-12-medium text-text-strong">#{pr().number}</span>
+            <span class="min-w-0 flex-1 truncate text-12-regular text-text-weak">{pr().title}</span>
+            <span class="text-12-regular text-text-weak">{pr().state}</span>
+          </div>
+        )}
+      </Show>
+      <Show when={(props.threads ?? []).length > 0}>
+        <div class="flex max-h-40 flex-col gap-2 overflow-auto border-b border-border-weaker-base px-2 py-2">
+          <span class="text-12-medium text-text-weak">{language.t("session.review.pr.comments")}</span>
+          <For each={props.threads}>
+            {(thread) => (
+              <button
+                type="button"
+                class="flex flex-col gap-1 text-left"
+                onClick={() => props.onSelectFile(thread.file)}
+              >
+                <span class="text-12-regular text-text-weak">
+                  {thread.file}
+                  {thread.line ? `:${thread.line}` : ""} · {thread.author}
+                </span>
+                <span class="whitespace-pre-wrap break-words text-12-regular text-text-base">{thread.body}</span>
+                <Show when={thread.resolved || thread.outdated}>
+                  <span class="text-12-regular text-text-weak">
+                    {thread.resolved
+                      ? language.t("session.review.pr.resolved")
+                      : language.t("session.review.pr.outdated")}
+                  </span>
+                </Show>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
       <Show
         when={props.diffsReady()}
         fallback={

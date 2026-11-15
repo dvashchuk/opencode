@@ -195,6 +195,8 @@ import type {
   SessionGetResponses,
   SessionInitErrors,
   SessionInitResponses,
+  SessionLinkPullRequestErrors,
+  SessionLinkPullRequestResponses,
   SessionListErrors,
   SessionListResponses,
   SessionMessageErrors,
@@ -205,6 +207,8 @@ import type {
   SessionPromptAsyncResponses,
   SessionPromptErrors,
   SessionPromptResponses,
+  SessionPullRequestErrors,
+  SessionPullRequestResponses,
   SessionRevertErrors,
   SessionRevertResponses,
   SessionShareErrors,
@@ -217,6 +221,8 @@ import type {
   SessionSummarizeResponses,
   SessionTodoErrors,
   SessionTodoResponses,
+  SessionUnlinkPullRequestErrors,
+  SessionUnlinkPullRequestResponses,
   SessionUnrevertErrors,
   SessionUnrevertResponses,
   SessionUnshareErrors,
@@ -2088,7 +2094,8 @@ export class Vcs extends HeyApiClient {
     parameters: {
       directory?: string
       workspace?: string
-      mode: "git" | "branch"
+      mode: "git" | "branch" | "pull_request"
+      sessionID?: string
       context?: number
     },
     options?: Options<never, ThrowOnError>,
@@ -2101,6 +2108,7 @@ export class Vcs extends HeyApiClient {
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
             { in: "query", key: "mode" },
+            { in: "query", key: "sessionID" },
             { in: "query", key: "context" },
           ],
         },
@@ -3695,6 +3703,123 @@ export class Session2 extends HeyApiClient {
       url: "/session/{sessionID}/diff",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Unlink a pull request
+   *
+   * Remove the pull request linked to the session.
+   */
+  public unlinkPullRequest<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      SessionUnlinkPullRequestResponses,
+      SessionUnlinkPullRequestErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/pull-request",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get linked pull request
+   *
+   * Retrieve the GitHub pull request linked to the session, including review threads. Returns null when no pull request is linked.
+   */
+  public pullRequest<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      refresh?: "true" | "false"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "refresh" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<SessionPullRequestResponses, SessionPullRequestErrors, ThrowOnError>({
+      url: "/session/{sessionID}/pull-request",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Link a pull request
+   *
+   * Link a GitHub pull request to the session and return its metadata and review threads.
+   */
+  public linkPullRequest<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      repository?: string
+      number?: number
+      refresh?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "repository" },
+            { in: "body", key: "number" },
+            { in: "body", key: "refresh" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<
+      SessionLinkPullRequestResponses,
+      SessionLinkPullRequestErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/pull-request",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 

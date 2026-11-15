@@ -1,5 +1,5 @@
 import { type SelectedLineRange } from "@pierre/diffs"
-import { Show, type Accessor, type JSX } from "solid-js"
+import { For, Show, type Accessor, type JSX } from "solid-js"
 import {
   createLineCommentAnnotations,
   createLineCommentGutterRenderer,
@@ -13,7 +13,15 @@ import { cloneSelectedLineRange, formatSelectedLineLabel } from "../../pierre/se
 import { LineCommentEditorV2, LineCommentV2 } from "@opencode-ai/ui/v2/line-comment-v2"
 import type { LineCommentEditorV2Mention } from "@opencode-ai/ui/v2/line-comment-v2"
 
-type LineCommentControllerV2Props<T extends LineCommentShape> = {
+type ReviewThreadShape = LineCommentShape & {
+  author?: string
+  replies?: { author: string; body: string }[]
+  readOnly?: boolean
+  resolved?: boolean
+  outdated?: boolean
+}
+
+type LineCommentControllerV2Props<T extends ReviewThreadShape> = {
   comments: Accessor<T[]>
   draftKey: Accessor<string>
   label: string
@@ -97,7 +105,7 @@ function lineCommentDraftElementV2(view: Accessor<DraftProps>) {
   )
 }
 
-export function createLineCommentControllerV2<T extends LineCommentShape>(props: LineCommentControllerV2Props<T>) {
+export function createLineCommentControllerV2<T extends ReviewThreadShape>(props: LineCommentControllerV2Props<T>) {
   const i18n = useI18n()
   const note = createLineCommentState<string>(props.state)
 
@@ -115,6 +123,35 @@ export function createLineCommentControllerV2<T extends LineCommentShape>(props:
     commentElement: lineCommentElementV2,
     draftElement: lineCommentDraftElementV2,
     renderComment: (comment) => {
+      if (comment.readOnly) {
+        return {
+          id: comment.id,
+          comment: (
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="text-12-medium text-text-strong">{comment.author}</span>
+                <Show when={comment.outdated}>
+                  <span class="text-11-regular text-text-weak">{i18n.t("ui.sessionReview.pr.outdated")}</span>
+                </Show>
+                <Show when={comment.resolved}>
+                  <span class="text-11-regular text-text-weak">{i18n.t("ui.sessionReview.pr.resolved")}</span>
+                </Show>
+              </div>
+              <div class="whitespace-pre-wrap break-words text-12-regular">{comment.comment}</div>
+              <For each={comment.replies ?? []}>
+                {(reply) => (
+                  <div class="flex flex-col gap-1 border-l border-border-weak-base pl-2">
+                    <span class="text-12-medium text-text-strong">{reply.author}</span>
+                    <div class="whitespace-pre-wrap break-words text-12-regular">{reply.body}</div>
+                  </div>
+                )}
+              </For>
+            </div>
+          ),
+          selection: formatSelectedLineLabel(comment.selection, i18n.t),
+        }
+      }
+
       const edit = () => note.openEditor(comment.id, comment.selection, comment.comment)
       const remove = () => {
         note.reset()

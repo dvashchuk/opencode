@@ -4,6 +4,8 @@ import { formatPatch, structuredPatch } from "diff"
 import { InstanceState } from "@/effect/instance-state"
 import { Watcher } from "@opencode-ai/core/filesystem/watcher"
 import { Git } from "@/git"
+import { GitHub } from "@/github/github"
+import type { SessionID } from "@/session/schema"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { EventV2 } from "@opencode-ai/core/event"
 import { VcsEvent } from "@opencode-ai/schema/vcs-event"
@@ -13,6 +15,8 @@ const MAX_PATCH_BYTES = 10_000_000
 const MAX_TOTAL_PATCH_BYTES = 10_000_000
 type DiffOptions = {
   readonly context?: number
+  readonly sessionID?: SessionID
+  readonly head?: string
 }
 
 const emptyPatch = (file: string) => formatPatch(structuredPatch(file, file, "", "", "", "", { context: 0 }))
@@ -103,10 +107,15 @@ const batchPatches = Effect.fnUntraced(function* (
 ) {
   if (list.length === 0) return { patches: new Map<string, string>(), capped: false }
 
-  const result = yield* git.patchAll(cwd, ref, {
-    context: options?.context ?? PATCH_CONTEXT_LINES,
-    maxOutputBytes: MAX_TOTAL_PATCH_BYTES,
-  })
+  const result = yield* git.patchAll(
+    cwd,
+    ref,
+    {
+      context: options?.context ?? PATCH_CONTEXT_LINES,
+      maxOutputBytes: MAX_TOTAL_PATCH_BYTES,
+    },
+    options?.head,
+  )
 
   return {
     patches: splitGitPatch(result).reduce((acc, patch, index) => {
@@ -132,10 +141,16 @@ const nativePatch = Effect.fnUntraced(function* (
           context: options?.context ?? PATCH_CONTEXT_LINES,
           maxOutputBytes: MAX_PATCH_BYTES,
         })
-      : yield* git.patch(cwd, ref, item.file, {
-          context: options?.context ?? PATCH_CONTEXT_LINES,
-          maxOutputBytes: MAX_PATCH_BYTES,
-        })
+      : yield* git.patch(
+          cwd,
+          ref,
+          item.file,
+          {
+            context: options?.context ?? PATCH_CONTEXT_LINES,
+            maxOutputBytes: MAX_PATCH_BYTES,
+          },
+          options?.head,
+        )
   if (!result.truncated && result.text) return result.text
 
   return emptyPatch(item.file)
@@ -204,22 +219,56 @@ const diffAgainstRef = Effect.fnUntraced(function* (
   cwd: string,
   ref: string,
   options?: DiffOptions,
+  includeUntracked = true,
 ) {
-  const [list, stats, extra] = yield* Effect.all([git.diff(cwd, ref), git.stats(cwd, ref), git.status(cwd)], {
-    concurrency: 3,
-  })
+  const [list, stats, extra] = yield* Effect.all(
+    [git.diff(cwd, ref, options?.head), git.stats(cwd, ref, options?.head), git.status(cwd)],
+    { concurrency: 3 },
+  )
   return yield* files(
     git,
     cwd,
     ref,
-    merge(
-      list,
-      extra.filter((item) => item.code === "??"),
-    ),
+    includeUntracked ? merge(list, extra.filter((item) => item.code === "??")) : list,
     nums(stats),
     yield* batchPatches(git, cwd, ref, list, options),
     options,
   )
+})
+
+const pullRequestDiff = Effect.fnUntraced(function* (
+  git: Git.Interface,
+  github: GitHub.Interface,
+  cwd: string,
+  sessionID: SessionID | undefined,
+  options?: DiffOptions,
+) {
+  const stored = sessionID ? yield* github.stored(sessionID) : undefined
+  if (!stored) return []
+  if (!(yield* git.hasHead(cwd))) return []
+
+  const remote = (yield* github.remote(stored.repository)) ?? "origin"
+  const has = (ref: string) =>
+    git.run(["cat-file", "-e", `${ref}^{commit}`], { cwd }).pipe(Effect.map((result) => result.exitCode === 0))
+
+  let head = stored.head_sha
+  if (!(yield* has(head))) {
+    const fetched = yield* git.run(["fetch", remote, `+refs/pull/${stored.number}/head:refs/opencode/pr/${stored.number}`], {
+      cwd,
+    })
+    if (fetched.exitCode !== 0) return []
+    head = `refs/opencode/pr/${stored.number}`
+  }
+
+  let base = stored.base_sha
+  if (!(yield* has(base))) {
+    const fetched = yield* git.run(["fetch", remote, stored.base_ref], { cwd })
+    if (fetched.exitCode !== 0) return []
+    base = `${remote}/${stored.base_ref}`
+  }
+
+  const ref = (yield* git.mergeBase(cwd, base, head)) ?? base
+  return yield* diffAgainstRef(git, cwd, ref, { ...options, head }, false)
 })
 
 const track = Effect.fnUntraced(function* (
@@ -232,7 +281,7 @@ const track = Effect.fnUntraced(function* (
   return yield* diffAgainstRef(git, cwd, ref, options)
 })
 
-export const Mode = Schema.Literals(["git", "branch"])
+export const Mode = Schema.Literals(["git", "branch", "pull_request"])
 export type Mode = Schema.Schema.Type<typeof Mode>
 
 export const Event = VcsEvent
@@ -295,10 +344,11 @@ interface State {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Vcs") {}
 
-const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = Layer.effect(
+const layer: Layer.Layer<Service, never, Git.Service | GitHub.Service | EventV2Bridge.Service> = Layer.effect(
   Service,
   Effect.gen(function* () {
     const git = yield* Git.Service
+    const github = yield* GitHub.Service
     const events = yield* EventV2Bridge.Service
     const scope = yield* Scope.Scope
 
@@ -378,6 +428,10 @@ const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = 
           return yield* track(git, ctx.directory, (yield* git.hasHead(ctx.directory)) ? "HEAD" : undefined, options)
         }
 
+        if (mode === "pull_request") {
+          return yield* pullRequestDiff(git, github, ctx.directory, options?.sessionID, options)
+        }
+
         if (!value.root) return []
         if (value.current && value.current === value.root.name) return []
         const ref = yield* git.mergeBase(ctx.directory, value.root.ref)
@@ -418,6 +472,10 @@ const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = 
   }),
 )
 
-export const node = LayerNode.make({ service: Service, layer: layer, deps: [Git.node, EventV2Bridge.node] })
+export const node = LayerNode.make({
+  service: Service,
+  layer: layer,
+  deps: [Git.node, GitHub.node, EventV2Bridge.node],
+})
 
 export * as Vcs from "./vcs"
