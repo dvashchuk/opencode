@@ -58,6 +58,7 @@ export type ReviewPanelV2Props = {
   pullRequest?: SessionReviewPullRequest
   threads?: SessionReviewThread[]
   onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
+  onThreadComment?: (input: { file: string; line: number; body: string }) => void | Promise<void>
 }
 
 export function ReviewPanelV2(props: ReviewPanelV2Props) {
@@ -165,6 +166,7 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
                   lineCommentActions={props.lineCommentActions}
                   threads={props.threads}
                   onThreadReply={props.onThreadReply}
+                  onThreadComment={props.onThreadComment}
                   comments={props.comments}
                   focusedComment={props.focusedComment}
                   onFocusedCommentChange={props.onFocusedCommentChange}

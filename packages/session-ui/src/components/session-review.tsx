@@ -123,6 +123,7 @@ export interface SessionReviewProps {
   comments?: SessionReviewComment[]
   threads?: SessionReviewThread[]
   onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
+  onThreadComment?: (input: { file: string; line: number; body: string }) => void | Promise<void>
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
   focusedFile?: string
@@ -537,6 +538,13 @@ export const SessionReview = (props: SessionReviewProps) => {
                           preview: selectionPreview(diff(), selection),
                         })
                       },
+                      onGitHubSubmit:
+                        props.onThreadComment
+                          ? (input) => {
+                              const line = Math.max(input.selection.start, input.selection.end)
+                              void props.onThreadComment?.({ file, line, body: input.comment })
+                            }
+                          : undefined,
                       onUpdate: ({ id, comment, selection }) => {
                         props.onLineCommentUpdate?.({
                           id,

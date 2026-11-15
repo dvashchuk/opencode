@@ -9819,6 +9819,7 @@ export type SessionPullRequestResponses = {
    */
   200: {
     pullRequest: {
+      id: string
       repository: string
       number: number
       url: string
@@ -9890,6 +9891,7 @@ export type SessionLinkPullRequestResponses = {
    */
   200: {
     pullRequest: {
+      id: string
       repository: string
       number: number
       url: string
@@ -9963,6 +9965,54 @@ export type SessionReplyPullRequestResponses = {
 }
 
 export type SessionReplyPullRequestResponse = SessionReplyPullRequestResponses[keyof SessionReplyPullRequestResponses]
+
+export type SessionCommentPullRequestData = {
+  body?: {
+    path: string
+    line: number
+    body: string
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/pull-request/comment"
+}
+
+export type SessionCommentPullRequestErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type SessionCommentPullRequestError = SessionCommentPullRequestErrors[keyof SessionCommentPullRequestErrors]
+
+export type SessionCommentPullRequestResponses = {
+  /**
+   * Created review thread
+   */
+  200: {
+    id: string
+    path?: string
+    line?: number
+    original_line?: number
+    outdated: boolean
+    resolved: boolean
+    comments: Array<{
+      author: string
+      body: string
+      created: string
+      url: string
+    }>
+  }
+}
+
+export type SessionCommentPullRequestResponse =
+  SessionCommentPullRequestResponses[keyof SessionCommentPullRequestResponses]
 
 export type SessionMessagesData = {
   body?: never

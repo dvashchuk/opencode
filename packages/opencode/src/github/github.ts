@@ -15,6 +15,7 @@ const DETECT_TTL_MS = Duration.toMillis(Duration.seconds(60))
 const THREAD_LIMIT = 100
 
 export const PullRequest = Schema.Struct({
+  id: Schema.String,
   repository: Schema.String,
   number: Schema.Finite,
   url: Schema.String,
@@ -82,6 +83,13 @@ export const ReplyInput = Schema.Struct({
 })
 export type ReplyInput = Schema.Schema.Type<typeof ReplyInput>
 
+export const CommentInput = Schema.Struct({
+  path: Schema.String,
+  line: Schema.Finite,
+  body: Schema.String,
+})
+export type CommentInput = Schema.Schema.Type<typeof CommentInput>
+
 export class AuthError extends Schema.TaggedErrorClass<AuthError>()("GitHubAuthError", {
   message: Schema.String,
 }) {}
@@ -104,6 +112,10 @@ export interface Interface {
   readonly unlink: (sessionID: SessionSchema.ID) => Effect.Effect<void>
   readonly detect: () => Effect.Effect<{ repository: string; number: number } | undefined>
   readonly reply: (input: ReplyInput) => Effect.Effect<ThreadComment, AuthError | RequestError>
+  readonly comment: (
+    sessionID: SessionSchema.ID,
+    input: CommentInput,
+  ) => Effect.Effect<ReviewThread, AuthError | RequestError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/GitHub") {}
@@ -132,6 +144,7 @@ const pullRequestQuery = `
 query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
+      id
       number
       url
       title
@@ -197,6 +210,7 @@ type GqlComment = {
 type GqlResponse = {
   repository: {
     pullRequest: {
+      id: string
       number: number
       url: string
       title: string
@@ -242,6 +256,44 @@ mutation($threadID: ID!, $body: String!) {
     }
   }
 }`
+
+const commentMutation = `
+mutation($pullRequestId: ID!, $path: String!, $line: Int!, $body: String!) {
+  addPullRequestReviewThread(
+    input: { pullRequestId: $pullRequestId, path: $path, body: $body, line: $line, side: RIGHT }
+  ) {
+    thread {
+      id
+      isResolved
+      isOutdated
+      path
+      line
+      comments(first: 1) {
+        nodes {
+          author {
+            login
+          }
+          body
+          createdAt
+          url
+        }
+      }
+    }
+  }
+}`
+
+type GqlCreatedThread = {
+  addPullRequestReviewThread: {
+    thread: {
+      id: string
+      isResolved: boolean
+      isOutdated: boolean
+      path: string | null
+      line: number | null
+      comments: { nodes: GqlComment[] }
+    } | null
+  } | null
+}
 
 type GqlReply = {
   addPullRequestReviewThreadReply: {
@@ -341,6 +393,47 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
       } satisfies ThreadComment
     })
 
+    const sendComment = Effect.fnUntraced(function* (sessionID: SessionSchema.ID, input: CommentInput) {
+      const row = yield* storedRow(sessionID)
+      if (!row) return yield* new RequestError({ message: "No pull request linked to this session", status: 404 })
+      const link = yield* cached(row.repository, row.number, true)
+      const token = yield* readToken()
+      const response = yield* Effect.tryPromise({
+        try: () =>
+          graphql<GqlCreatedThread>(commentMutation, {
+            pullRequestId: link.pullRequest.id,
+            path: input.path,
+            line: input.line,
+            body: input.body,
+            headers: { authorization: `token ${token}` },
+          }),
+        catch: (error) => {
+          const status = (error as { response?: { status?: number } }).response?.status
+          return new RequestError({ message: "GitHub comment failed", status })
+        },
+      })
+      const thread = response.addPullRequestReviewThread?.thread
+      const comment = thread?.comments.nodes[0]
+      if (!thread || !comment?.author?.login) {
+        return yield* new RequestError({ message: "GitHub comment was not created" })
+      }
+      return {
+        id: thread.id,
+        path: thread.path ?? input.path,
+        line: thread.line ?? input.line,
+        outdated: thread.isOutdated,
+        resolved: thread.isResolved,
+        comments: [
+          {
+            author: comment.author.login,
+            body: comment.body,
+            created: comment.createdAt,
+            url: comment.url,
+          },
+        ],
+      } satisfies ReviewThread
+    })
+
     const fetchLink = Effect.fnUntraced(function* (repository: string, number: number) {
       const split = splitRepository(repository)
       if (!split) return yield* new RequestError({ message: `Invalid repository ${repository}` })
@@ -375,6 +468,7 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
 
       return {
         pullRequest: {
+          id: pr.id,
           repository,
           number: pr.number,
           url: pr.url,
@@ -531,6 +625,9 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
       }),
       reply: Effect.fn("GitHub.reply")(function* (input) {
         return yield* sendReply(input)
+      }),
+      comment: Effect.fn("GitHub.comment")(function* (sessionID, input) {
+        return yield* sendComment(sessionID, input)
       }),
     })
   }),
