@@ -50,6 +50,8 @@ type CommentProps = {
 }
 
 type DraftProps = {
+  onGitHubSubmit?: () => void
+  githubLabel?: string
   value: string
   selection: JSX.Element
   onInput: (value: string) => void
@@ -103,6 +105,8 @@ function lineCommentDraftElementV2(view: Accessor<DraftProps>) {
         onSubmit={view().onSubmit}
         cancelLabel={view().cancelLabel}
         submitLabel={view().submitLabel}
+        onGitHubSubmit={view().onGitHubSubmit}
+        githubLabel={view().githubLabel}
         mention={view().mention}
       />
     </div>
