@@ -67,6 +67,7 @@ export interface SessionReviewTabProps {
   pullRequest?: SessionReviewPullRequest
   threads?: SessionReviewThread[]
   onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
+  onThreadComment?: (input: { file: string; line: number; body: string }) => void | Promise<void>
 }
 
 export function SessionReviewTab(props: SessionReviewTabProps) {

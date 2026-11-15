@@ -45,6 +45,7 @@ export type SessionReviewFilePreviewV2Props = {
   comments?: SessionReviewComment[]
   threads?: SessionReviewThread[]
   onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
+  onThreadComment?: (input: { file: string; line: number; body: string }) => void | Promise<void>
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
 }
@@ -159,6 +160,13 @@ export function SessionReviewFilePreviewV2(props: SessionReviewFilePreviewV2Prop
         preview: selectionPreview(view(), selection),
       })
     },
+    onGitHubSubmit:
+      props.onThreadComment
+        ? (input) => {
+            const line = Math.max(input.selection.start, input.selection.end)
+            void props.onThreadComment?.({ file: props.file, line, body: input.comment })
+          }
+        : undefined,
     onUpdate: ({ id, comment, selection }) => {
       props.onLineCommentUpdate?.({
         id,

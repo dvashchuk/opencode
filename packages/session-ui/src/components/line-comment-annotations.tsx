@@ -58,6 +58,7 @@ type LineCommentControllerProps<T extends LineCommentShape> = {
   mention?: LineCommentEditorProps["mention"]
   state: LineCommentStateProps<string>
   onSubmit: (input: { comment: string; selection: SelectedLineRange }) => void
+  onGitHubSubmit?: (input: { comment: string; selection: SelectedLineRange }) => void
   onUpdate?: (input: { id: string; comment: string; selection: SelectedLineRange }) => void
   onDelete?: (comment: T) => void
   renderCommentActions?: (comment: T, controls: { edit: VoidFunction; remove: VoidFunction }) => JSX.Element
@@ -435,6 +436,16 @@ export function createLineCommentController<T extends LineCommentShape>(
         props.onSubmit({ comment, selection: cloneSelectedLineRange(range) })
         note.cancelDraft()
       },
+      onGitHubSubmit: props.onGitHubSubmit
+        ? () => {
+            props.onGitHubSubmit?.({
+              comment: note.draft(),
+              selection: cloneSelectedLineRange(range),
+            })
+            note.cancelDraft()
+          }
+        : undefined,
+      githubLabel: i18n.t("ui.lineComment.github"),
       onPopoverFocusOut: props.onDraftPopoverFocusOut,
     }),
   })

@@ -58,6 +58,7 @@ export const dict: Record<string, string> = {
   "ui.lineComment.placeholder": "Add comment",
   "ui.lineComment.contextPlaceholder": "Add context for this change",
   "ui.lineComment.submit": "Comment",
+  "ui.lineComment.github": "Comment on GitHub",
   "ui.lineComment.cancel": "Cancel",
 
   "ui.sessionTurn.steps.show": "Show steps",

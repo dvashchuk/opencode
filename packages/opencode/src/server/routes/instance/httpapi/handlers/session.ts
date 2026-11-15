@@ -433,6 +433,13 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return yield* github.reply(ctx.payload).pipe(Effect.orDie)
     })
 
+    const commentPullRequest = Effect.fn("InstanceHttpApi.commentPullRequest")(function* (ctx: {
+      params: { sessionID: SessionID }
+      payload: GitHub.CommentInput
+    }) {
+      return yield* github.comment(ctx.params.sessionID, ctx.payload).pipe(Effect.orDie)
+    })
+
     const unlinkPullRequest = Effect.fn("InstanceHttpApi.unlinkPullRequest")(function* (ctx: {
       params: { sessionID: SessionID }
     }) {
@@ -446,6 +453,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("linkPullRequest", linkPullRequest)
       .handle("unlinkPullRequest", unlinkPullRequest)
       .handle("replyPullRequest", replyPullRequest)
+      .handle("commentPullRequest", commentPullRequest)
       .handle("status", status)
       .handle("get", get)
       .handle("children", children)
