@@ -32,6 +32,7 @@ import type { ReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-stat
 import { applyFileListKeyDown, SessionFileListV2 } from "@/pages/session/v2/session-file-list-v2"
 
 import type { SessionReviewPullRequest, SessionReviewThread } from "@/pages/session/review-tab"
+import type { SessionReviewThreadReply } from "@opencode-ai/session-ui/session-review"
 
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 
@@ -56,6 +57,7 @@ export type ReviewPanelV2Props = {
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
   pullRequest?: SessionReviewPullRequest
   threads?: SessionReviewThread[]
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
 }
 
 export function ReviewPanelV2(props: ReviewPanelV2Props) {
@@ -162,6 +164,7 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
                   onLineCommentDelete={props.onLineCommentDelete}
                   lineCommentActions={props.lineCommentActions}
                   threads={props.threads}
+                  onThreadReply={props.onThreadReply}
                   comments={props.comments}
                   focusedComment={props.focusedComment}
                   onFocusedCommentChange={props.onFocusedCommentChange}
@@ -187,6 +190,7 @@ function ReviewPanelV2Sidebar(props: {
   activeDiff: () => string | undefined
   pullRequest?: SessionReviewPullRequest
   threads?: SessionReviewThread[]
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
 }) {
   const language = useLanguage()
   const [explicitHighlight, setExplicitHighlight] = createSignal<string | undefined>()

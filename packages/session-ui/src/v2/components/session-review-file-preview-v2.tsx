@@ -21,6 +21,7 @@ import type {
   SessionReviewFocus,
   SessionReviewLineComment,
   SessionReviewThread,
+  SessionReviewThreadReply,
 } from "../../components/session-review"
 import type { SessionReviewExpandMode } from "./session-review-v2"
 import { createLineCommentControllerV2 } from "./line-comment-annotations-v2"
@@ -43,6 +44,7 @@ export type SessionReviewFilePreviewV2Props = {
   lineCommentActions?: SessionReviewCommentActions
   comments?: SessionReviewComment[]
   threads?: SessionReviewThread[]
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
 }
@@ -173,6 +175,7 @@ export function SessionReviewFilePreviewV2(props: SessionReviewFilePreviewV2Prop
       })
     },
     editSubmitLabel: props.lineCommentActions?.saveLabel,
+    onThreadReply: props.onThreadReply,
     renderCommentActions: props.lineCommentActions
       ? (comment, controls) => (
           <ReviewCommentMenuV2 labels={props.lineCommentActions!} onEdit={controls.edit} onDelete={controls.remove} />

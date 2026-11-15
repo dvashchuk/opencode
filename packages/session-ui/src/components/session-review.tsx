@@ -43,6 +43,8 @@ export type SessionReviewComment = {
   outdated?: boolean
 }
 
+export type SessionReviewThreadReply = { threadID: string; body: string }
+
 export type SessionReviewThread = {
   id: string
   file: string
@@ -120,6 +122,7 @@ export interface SessionReviewProps {
   lineCommentActions?: SessionReviewCommentActions
   comments?: SessionReviewComment[]
   threads?: SessionReviewThread[]
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
   focusedFile?: string
@@ -135,6 +138,49 @@ export interface SessionReviewProps {
   onViewFile?: (file: string) => void
   readFile?: (path: string) => Promise<FileContent | undefined>
   lineCommentMention?: LineCommentEditorProps["mention"]
+}
+
+export function ThreadReply(props: { threadID: string; onReply?: (input: SessionReviewThreadReply) => void | Promise<void> }) {
+  const i18n = useI18n()
+  const [state, setState] = createStore({ value: "", sending: false })
+
+  const submit = async () => {
+    const body = state.value.trim()
+    if (!body || !props.onReply) return
+    setState("sending", true)
+    try {
+      await props.onReply({ threadID: props.threadID, body })
+      setState({ value: "", sending: false })
+    } catch {
+      setState("sending", false)
+    }
+  }
+
+  return (
+    <form
+      class="flex flex-col gap-1"
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+      onSubmit={(event) => {
+        event.preventDefault()
+        void submit()
+      }}
+    >
+      <textarea
+        class="min-h-16 w-full resize-y rounded border border-border-weak-base bg-background-base px-2 py-1 text-12-regular text-text-base outline-none"
+        placeholder={i18n.t("ui.sessionReview.pr.replyPlaceholder")}
+        value={state.value}
+        onInput={(event) => setState("value", event.currentTarget.value)}
+      />
+      <button
+        type="submit"
+        class="self-end rounded border border-border-weak-base px-2 py-1 text-12-regular text-text-base disabled:opacity-50"
+        disabled={state.sending || state.value.trim().length === 0}
+      >
+        {i18n.t("ui.sessionReview.pr.reply")}
+      </button>
+    </form>
+  )
 }
 
 function ReviewCommentMenu(props: {
