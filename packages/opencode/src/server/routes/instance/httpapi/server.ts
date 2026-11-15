@@ -15,6 +15,7 @@ import { Env } from "@/env"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Format } from "@/format"
 import { Git } from "@/git"
+import { GitHub } from "@/github/github"
 import { Installation } from "@/installation"
 import { LSP } from "@/lsp/lsp"
 import { MCP } from "@/mcp"
@@ -218,6 +219,7 @@ const app = LayerNode.group([
   Config.node,
   Env.node,
   Git.node,
+  GitHub.node,
   Ripgrep.node,
   Storage.node,
   Snapshot.node,

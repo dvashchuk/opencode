@@ -2,6 +2,7 @@ import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { Permission } from "@/permission"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 
+import { GitHub } from "@/github/github"
 import { Session } from "@/session/session"
 import { MessageV2 } from "@/session/message-v2"
 import { SessionPrompt } from "@/session/prompt"
@@ -39,6 +40,10 @@ export const ListQuery = Schema.Struct({
 export const DiffQuery = Schema.Struct({
   ...WorkspaceRoutingQueryFields,
   ...Struct.omit(SessionSummary.DiffInput.fields, ["sessionID"]),
+})
+export const PullRequestQuery = Schema.Struct({
+  ...WorkspaceRoutingQueryFields,
+  refresh: Schema.optional(QueryBoolean),
 })
 export const MessagesQuery = Schema.Struct({
   ...WorkspaceRoutingQueryFields,
@@ -81,6 +86,7 @@ export const SessionPaths = {
   get: `${root}/:sessionID`,
   children: `${root}/:sessionID/children`,
   todo: `${root}/:sessionID/todo`,
+  pullRequest: `${root}/:sessionID/pull-request`,
   diff: `${root}/:sessionID/diff`,
   messages: `${root}/:sessionID/message`,
   message: `${root}/:sessionID/message/:messageID`,
@@ -174,6 +180,44 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.diff",
             summary: "Get message diff",
             description: "Get the file changes (diff) that resulted from a specific user message in the session.",
+          }),
+        ),
+        HttpApiEndpoint.get("pullRequest", SessionPaths.pullRequest, {
+          params: { sessionID: SessionID },
+          query: PullRequestQuery,
+          success: described(Schema.NullOr(GitHub.Link), "Linked pull request"),
+          error: [HttpApiError.BadRequest],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.pullRequest",
+            summary: "Get linked pull request",
+            description:
+              "Retrieve the GitHub pull request linked to the session, including review threads. Returns null when no pull request is linked.",
+          }),
+        ),
+        HttpApiEndpoint.put("linkPullRequest", SessionPaths.pullRequest, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          payload: GitHub.LinkInput,
+          success: described(GitHub.Link, "Linked pull request"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.linkPullRequest",
+            summary: "Link a pull request",
+            description: "Link a GitHub pull request to the session and return its metadata and review threads.",
+          }),
+        ),
+        HttpApiEndpoint.delete("unlinkPullRequest", SessionPaths.pullRequest, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Boolean, "Successfully unlinked pull request"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.unlinkPullRequest",
+            summary: "Unlink a pull request",
+            description: "Remove the pull request linked to the session.",
           }),
         ),
         HttpApiEndpoint.get("messages", SessionPaths.messages, {
