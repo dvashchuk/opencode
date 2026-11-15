@@ -53,13 +53,15 @@ export const dict: Record<string, string> = {
 
   "ui.lineComment.label.prefix": "Comment on ",
   "ui.lineComment.label.suffix": "",
-  "ui.lineComment.editorLabel.prefix": "Commenting on ",
+  "ui.lineComment.editorLabel.prefix": "Add comment on ",
   "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Add comment",
   "ui.lineComment.contextPlaceholder": "Add context for this change",
   "ui.lineComment.submit": "Comment",
   "ui.lineComment.github": "Comment on GitHub",
   "ui.lineComment.github.label": "GitHub",
+  "ui.lineComment.opencode.label": "OpenCode",
+  "ui.lineComment.editorTitle": "Add comment",
   "ui.lineComment.cancel": "Cancel",
 
   "ui.sessionTurn.steps.show": "Show steps",

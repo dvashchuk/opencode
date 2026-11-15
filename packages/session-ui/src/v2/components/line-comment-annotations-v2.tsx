@@ -237,7 +237,7 @@ export function createLineCommentControllerV2<T extends ReviewThreadShape>(props
         : undefined,
       githubLabel: i18n.t("ui.lineComment.github"),
       cancelLabel: i18n.t("ui.lineComment.cancel"),
-      submitLabel: i18n.t("ui.lineComment.submit"),
+      submitLabel: i18n.t("ui.lineComment.opencode.label"),
       mention: props.mention,
     }),
   })

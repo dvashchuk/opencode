@@ -678,7 +678,7 @@ export default function Page() {
     if (project?.vcs === "git" && vcs?.branch && vcs?.default_branch && vcs.branch !== vcs.default_branch) {
       list.push("branch")
     }
-    if (project?.vcs === "git" && pullRequestQuery.data) list.push("pull_request")
+    if (project?.vcs === "git") list.push("pull_request")
     list.push("turn")
     return list
   })

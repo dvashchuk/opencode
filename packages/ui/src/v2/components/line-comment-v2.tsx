@@ -113,7 +113,7 @@ export function LineCommentEditorV2(props: LineCommentEditorV2Props) {
     "classList",
   ])
 
-  const heading = () => local.heading ?? i18n.t("ui.lineComment.submit")
+  const heading = () => local.heading ?? i18n.t("ui.lineComment.editorTitle")
   const canSubmit = () => local.value.trim().length > 0
 
   const closeMention = () => {
@@ -316,7 +316,7 @@ export function LineCommentEditorV2(props: LineCommentEditorV2Props) {
             </Show>
             <ButtonV2 type="button" size="normal" variant="contrast" disabled={!canSubmit()} onClick={submit}>
               <Icon name="comment" size="small" />
-              {local.submitLabel ?? i18n.t("ui.lineComment.submit")}
+              {local.submitLabel ?? i18n.t("ui.lineComment.opencode.label")}
             </ButtonV2>
           </div>
         </div>

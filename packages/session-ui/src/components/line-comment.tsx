@@ -440,7 +440,7 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
                   on:click={click(submit) as any}
                 >
                   <Icon name="comment" size="small" />
-                  {split.submitLabel ?? i18n.t("ui.lineComment.submit")}
+                  {split.submitLabel ?? i18n.t("ui.lineComment.opencode.label")}
                 </button>
               </>
             }
@@ -463,7 +463,7 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
             </Show>
             <Button size="small" variant="primary" disabled={split.value.trim().length === 0} onClick={submit}>
               <Icon name="comment" size="small" />
-              {split.submitLabel ?? i18n.t("ui.lineComment.submit")}
+              {split.submitLabel ?? i18n.t("ui.lineComment.opencode.label")}
             </Button>
           </Show>
         </div>
