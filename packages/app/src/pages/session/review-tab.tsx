@@ -7,6 +7,7 @@ import type {
   SessionReviewCommentActions,
   SessionReviewCommentDelete,
   SessionReviewCommentUpdate,
+  SessionReviewThreadReply,
 } from "@opencode-ai/session-ui/session-review"
 import type { SelectedLineRange } from "@/context/file"
 import { useSDK } from "@/context/sdk"
@@ -65,6 +66,7 @@ export interface SessionReviewTabProps {
   }
   pullRequest?: SessionReviewPullRequest
   threads?: SessionReviewThread[]
+  onThreadReply?: (input: SessionReviewThreadReply) => void | Promise<void>
 }
 
 export function SessionReviewTab(props: SessionReviewTabProps) {

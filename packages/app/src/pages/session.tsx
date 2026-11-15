@@ -1299,6 +1299,23 @@ export default function Page() {
     return <SessionReviewEmptyChangesV2 />
   }
 
+  const replyToPullRequestThread = async (input: { threadID: string; body: string }) => {
+    const sessionID = params.id
+    if (!sessionID) return
+    await sdk().client.session.replyPullRequest({
+      sessionID,
+      threadID: input.threadID,
+      body: input.body,
+      directory: sdk().directory,
+    })
+    const fresh = await sdk().client.session.pullRequest({
+      sessionID,
+      directory: sdk().directory,
+      refresh: "true",
+    })
+    queryClient.setQueryData(["session-pull-request", sessionID, sdk().directory], fresh.data)
+  }
+
   const pullRequestBanner = () => {
     const link = pullRequestQuery.data
     if (!link || reviewMode() !== "pull_request") return
@@ -1369,6 +1386,7 @@ export default function Page() {
         classes={input.classes}
         pullRequest={pullRequestBanner()}
         threads={pullRequestThreads()}
+        onThreadReply={replyToPullRequestThread}
       />
     </Show>
   )
@@ -1396,6 +1414,7 @@ export default function Page() {
     get threads() {
       return pullRequestThreads()
     },
+    onThreadReply: replyToPullRequestThread,
     loadDiff: loadReviewDiff,
     get activeFile() {
       return activeReviewFile()

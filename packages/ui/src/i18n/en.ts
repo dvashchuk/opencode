@@ -6,6 +6,8 @@ export const dict: Record<string, string> = {
   "ui.sessionReview.title.pullRequest": "Pull request",
   "ui.sessionReview.pr.resolved": "Resolved",
   "ui.sessionReview.pr.outdated": "Outdated",
+  "ui.sessionReview.pr.reply": "Reply",
+  "ui.sessionReview.pr.replyPlaceholder": "Reply to this thread",
   "ui.sessionReview.diffStyle.unified": "Unified",
   "ui.sessionReview.diffStyle.split": "Split",
   "ui.sessionReview.expandAll": "Expand all",
