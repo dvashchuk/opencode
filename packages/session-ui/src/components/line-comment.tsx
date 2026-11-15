@@ -428,6 +428,7 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
                     on:click={click(() => split.onGitHubSubmit?.()) as any}
                   >
                     <Icon name="github" size="small" />
+                    {i18n.t("ui.lineComment.github.label")}
                   </button>
                 </Show>
                 <button
@@ -457,6 +458,7 @@ export const LineCommentEditor = (props: LineCommentEditorProps) => {
                 onClick={() => split.onGitHubSubmit?.()}
               >
                 <Icon name="github" size="small" />
+                {i18n.t("ui.lineComment.github.label")}
               </Button>
             </Show>
             <Button size="small" variant="primary" disabled={split.value.trim().length === 0} onClick={submit}>

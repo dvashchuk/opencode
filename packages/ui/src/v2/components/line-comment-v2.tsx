@@ -1,5 +1,6 @@
 import { For, Show, createSignal, onMount, splitProps, type ComponentProps, type JSX } from "solid-js"
 import { FileIcon } from "../../components/file-icon"
+import { Icon } from "../../components/icon"
 import { useI18n } from "../../context/i18n"
 import { useFilteredList } from "../../hooks"
 import { ButtonV2 } from "./button-v2"
@@ -72,6 +73,8 @@ export interface LineCommentEditorV2Props extends Omit<ComponentProps<"div">, "c
   rows?: number
   cancelLabel?: string
   submitLabel?: string
+  onGitHubSubmit?: () => void
+  githubLabel?: string
   autofocus?: boolean
   mention?: LineCommentEditorV2Mention
 }
@@ -102,6 +105,8 @@ export function LineCommentEditorV2(props: LineCommentEditorV2Props) {
     "rows",
     "cancelLabel",
     "submitLabel",
+    "onGitHubSubmit",
+    "githubLabel",
     "autofocus",
     "mention",
     "class",
@@ -295,7 +300,22 @@ export function LineCommentEditorV2(props: LineCommentEditorV2Props) {
             <ButtonV2 type="button" size="normal" variant="neutral" onClick={() => local.onCancel()}>
               {local.cancelLabel ?? i18n.t("ui.lineComment.cancel")}
             </ButtonV2>
+            <Show when={local.onGitHubSubmit}>
+              <ButtonV2
+                type="button"
+                size="normal"
+                variant="neutral"
+                title={local.githubLabel}
+                aria-label={local.githubLabel}
+                disabled={!canSubmit()}
+                onClick={() => local.onGitHubSubmit?.()}
+              >
+                <Icon name="github" size="small" />
+                {i18n.t("ui.lineComment.github.label")}
+              </ButtonV2>
+            </Show>
             <ButtonV2 type="button" size="normal" variant="contrast" disabled={!canSubmit()} onClick={submit}>
+              <Icon name="comment" size="small" />
               {local.submitLabel ?? i18n.t("ui.lineComment.submit")}
             </ButtonV2>
           </div>

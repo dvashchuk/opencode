@@ -221,6 +221,17 @@ export function createLineCommentControllerV2<T extends ReviewThreadShape>(props
         note.cancelDraft()
         note.select(null)
       },
+      onGitHubSubmit: props.onGitHubSubmit
+        ? () => {
+            props.onGitHubSubmit?.({
+              comment: note.draft(),
+              selection: cloneSelectedLineRange(range),
+            })
+            note.cancelDraft()
+            note.select(null)
+          }
+        : undefined,
+      githubLabel: i18n.t("ui.lineComment.github"),
       cancelLabel: i18n.t("ui.lineComment.cancel"),
       submitLabel: i18n.t("ui.lineComment.submit"),
       mention: props.mention,
