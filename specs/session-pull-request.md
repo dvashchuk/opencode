@@ -353,70 +353,40 @@ the existing `git` and `branch` modes byte-identical.
 
 ## Status
 
-Implemented in the working tree, uncommitted. Where the code differs from the plan above, the code wins and this section records why.
+Landed on `session-pull-request`:
 
-Landed:
+- `session_pull_request` table plus migration `20261115114955_add_session_pull_request`.
+- `packages/opencode/src/github/github.ts`: `gh` token chain, 30s link cache, 60s
+  branch detection cache, review threads, thread replies, new line comments, and
+  cache invalidation after every write.
+- `Vcs.Mode` gains `pull_request`, diffing merge-base(base, head) against head
+  with untracked files excluded. `Git.diff`, `Git.stats`, `Git.patch` and
+  `Git.patchAll` gained an optional head ref; existing modes are unchanged.
+- Routes: `GET`/`PUT`/`DELETE /session/:sessionID/pull-request`,
+  `POST .../reply`, `POST .../comment`, and `mode=pull_request` on `/vcs/diff`.
+  The legacy SDK is regenerated, never hand-edited.
+- App: the change dropdown offers the pull request whenever the project is a git
+  repo; the review panel shows a PR header, a thread list, and inline read-only
+  threads at their lines in both the classic and V2 views. The line editor offers
+  two named actions, `OpenCode` for a local comment and `GitHub` for a real
+  review comment, and every thread carries a reply box.
 
-- `packages/core/src/session/sql.ts` table plus migration
-  `20261115114955_add_session_pull_request`, with `schema.json`,
-  `schema.gen.ts`, and `migration.gen.ts` regenerated.
-- `packages/opencode/src/github/github.ts`: `gh` token chain, GraphQL read of
-  the pull request and its threads, 30s cache, process-local token cache, and a
-  60s detection cache for the current branch.
-- `Vcs.Mode` gains `pull_request`, and `Git.diff`, `Git.stats`, `Git.patch`,
-  `Git.patchAll` gained an optional `head` ref so the mode diffs
-  merge-base(base, head) against head instead of the working tree. Untracked
-  files are excluded. Existing modes are untouched; `test/project/vcs.test.ts`
-  still passes unchanged.
-- Routes `GET`, `PUT`, `DELETE /session/:sessionID/pull-request` and
-  `mode=pull_request` on `/vcs/diff`, with the legacy SDK regenerated.
-- App: `pull_request` in the change dropdown, PR diff through the new mode, a
-  PR header strip, and a review-thread list in both the classic review tab and
-  the V2 review sidebar. Threads are plain text with author, file, line,
-  resolved and outdated markers.
+Known deviations:
 
-Deviations from the plan:
+- `checks` is fetched and returned but not rendered; the header shows number,
+  title and state only.
+- Only the first 100 review threads are read; `truncated` reports the rest.
+- GitHub failures surface as a 500 from the link routes, and `pull_request` diff
+  returns an empty list when it cannot resolve the PR, so the UI shows its normal
+  empty state instead of a specific message.
+- A GitHub line comment whose line is not part of the PR diff fails server-side
+  without a visible error in the UI.
+- Auto-detection by current branch replaces manual linking; `opencode pr` does
+  not link its session.
 
-- `checks` is one rollup state (`success | failure | pending | expected | error
-  | unknown`), not success/failure/pending counts, because
-  `statusCheckRollup` exposes a single state.
-- Only the first 100 review threads are fetched; `truncated` reports the rest.
-- Link routes surface GitHub failures as errors rather than typed 409/404
-  payloads, and `pull_request` diff returns an empty list when the PR cannot be
-  resolved, so the UI shows its normal empty state instead of a bespoke one.
-- Auto-detection by current branch replaces manual linking for v1. `opencode pr`
-  does not link the session yet, and there is no explicit link or unlink button
-  in the UI; the routes exist for both.
+Still missing:
 
-Inline rendering is done too: `SessionReview` and the V2 file preview accept a
-`threads` prop and merge GitHub threads into the existing line-comment
-annotation controller as read-only entries, so a thread is drawn at its anchored
-line with author, body, reply chain, and resolved/outdated markers, with no
-edit or delete affordances. The review panel also keeps the flat thread list.
-
-Unverified without a running server:
-
-- First real call to GitHub, and the migration applying to an existing database.
-
-## Reply to a thread
-
-`POST /session/:sessionID/pull-request/reply` takes `{ threadID, body }` and
-runs the GraphQL `addPullRequestReviewThreadReply` mutation with the same `gh`
-token. It returns the created comment. Every read-only thread annotation in both
-review views carries a reply box; submitting posts the reply and then refetches
-the pull request with `refresh=true` so the new comment appears without waiting
-out the 30s cache. v1 allowed only reads; this is the single write path and it
-writes nothing but a thread reply.
-
-## Comment on a diff line
-
-`POST /session/:sessionID/pull-request/comment` takes `{ path, line, body }` and
-runs the GraphQL `addPullRequestReviewThread` mutation against the linked pull
-request, creating a new review thread on that line. The reply path handles
-existing threads; this handles new ones.
-
-The line editor now offers two submits, each with its own icon: the comment icon
-posts a local session comment, the GitHub icon posts the same text to the pull
-request. GitHub-authored threads are marked with the GitHub icon and the author
-login, never with edit or delete affordances, so a local draft and a real review
-comment are distinguishable at a glance.
+- No UI to link or unlink a pull request, although both routes exist.
+- No tests for the GitHub service, the link routes, or `pull_request` diff mode;
+  the VCS suite covers only the pre-existing modes.
+- New i18n keys exist in English only.

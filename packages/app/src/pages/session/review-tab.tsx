@@ -20,9 +20,7 @@ export type DiffStyle = "unified" | "split"
 export type SessionReviewPullRequest = {
   number: number
   title: string
-  url: string
   state: string
-  checks: string
 }
 
 export type SessionReviewThread = {

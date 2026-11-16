@@ -1340,9 +1340,7 @@ export default function Page() {
     return {
       number: link.pullRequest.number,
       title: link.pullRequest.title,
-      url: link.pullRequest.url,
       state: link.pullRequest.state,
-      checks: link.pullRequest.checks,
     }
   }
 

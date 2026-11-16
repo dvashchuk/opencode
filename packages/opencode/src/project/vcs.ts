@@ -222,7 +222,11 @@ const diffAgainstRef = Effect.fnUntraced(function* (
   includeUntracked = true,
 ) {
   const [list, stats, extra] = yield* Effect.all(
-    [git.diff(cwd, ref, options?.head), git.stats(cwd, ref, options?.head), git.status(cwd)],
+    [
+      git.diff(cwd, ref, options?.head),
+      git.stats(cwd, ref, options?.head),
+      includeUntracked ? git.status(cwd) : Effect.succeed([]),
+    ],
     { concurrency: 3 },
   )
   return yield* files(

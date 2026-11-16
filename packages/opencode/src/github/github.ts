@@ -100,7 +100,6 @@ export class RequestError extends Schema.TaggedErrorClass<RequestError>()("GitHu
 }) {}
 
 export interface Interface {
-  readonly token: () => Effect.Effect<string, AuthError>
   readonly repository: () => Effect.Effect<string | undefined>
   readonly remote: (repository: string) => Effect.Effect<string | undefined>
   readonly stored: (sessionID: SessionSchema.ID) => Effect.Effect<Stored | undefined>
@@ -565,9 +564,6 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
     })
 
     return Service.of({
-      token: Effect.fn("GitHub.token")(function* () {
-        return yield* readToken()
-      }),
       repository: Effect.fn("GitHub.repository")(function* () {
         return yield* repository()
       }),
@@ -624,10 +620,14 @@ const layer: Layer.Layer<Service, never, Database.Service | Git.Service> = Layer
         return yield* detect()
       }),
       reply: Effect.fn("GitHub.reply")(function* (input) {
-        return yield* sendReply(input)
+        const comment = yield* sendReply(input)
+        yield* Ref.set(cache, new Map())
+        return comment
       }),
       comment: Effect.fn("GitHub.comment")(function* (sessionID, input) {
-        return yield* sendComment(sessionID, input)
+        const thread = yield* sendComment(sessionID, input)
+        yield* Ref.set(cache, new Map())
+        return thread
       }),
     })
   }),
